@@ -1,11 +1,16 @@
 class Equation{
     constructor(equation_str){
+        equation_str = equation_str.toUpperCase();
+        equation_str = equation_str.replace(/\s/g, '');
         this.equation_str = equation_str;
+        if (this.check_basic_errors() !== true){
+            return ;
+        }
         this.add_plus(equation_str);
-        this.equation_str = this.equation_str.replace(/\s/g, '');
         const splits = this.equation_str.split('=');
         if (splits.length != 2){
-            throw `The equation must have two sides separated by =`;
+            console.log(`The equation must have two sides separated by =`);
+            return ;
         }else{
             this.rhs = new Polynomial(splits[0]);
             this.lhs = new Polynomial(splits[1]);
@@ -13,15 +18,142 @@ class Equation{
             this.lhs.coeff.sort((a, b) => a.key - b.key);
         }
         this.equ = this.process_polynomes();
-        return;
+        this.degree = 0;
+        if (this.equ.length > 0){
+            this.degree = this.equ[this.equ.length - 1].key;
+        }else{
+            console.log(`Reduced form: 0 = 0\nPolynomial degree: 0\nAny number as solution`);
+            return ;
+        }
+        this.reduced_equation();
         if (this.check_equation_degree() === true)
         {
-            this.a = this.rhs.a - this.lhs.a;
-            this.b = this.rhs.b - this.lhs.b;
-            this.c = this.rhs.c - this.lhs.c;
-            this.print_equation();
             this.solve_equation();
         }
+    }
+
+    check_basic_errors(){
+        let array = this.equation_str;
+        for (let index = 0; index < array.length; index++) {
+            const element = array[index];
+            if ('0123456789.-+*^X='.indexOf(element) < 0){
+                console.log(element);
+                console.log('Bad equation format allowed characters : [0123456789-+*X= ]');
+                return false;
+            }
+        }
+        for (let index = 0; index < array.length; index++) {
+            const element = array[index];
+            if (element >= '0' && element <= '9'){
+                if (index > 0){
+                    if ('0123456789.-+*^='.indexOf(array[index - 1]) < 0){
+                        console.log('Error bad format ');
+                        return false;
+                    }
+                    if (index + 1 < array.length && '0123456789.-+*^=X'.indexOf(array[index + 1]) < 0){
+                        console.log('Error bad format ' + element);
+                        return false;
+                    }
+                }
+            } else if (element === '='){
+                if (index > 0){
+                    if ('0123456789.X'.indexOf(array[index - 1]) < 0){
+                        console.log('Error bad format ');
+                        return false;
+                    }
+                    if (index + 1 >= array.length){
+                        console.log(`Error bad format ` + element);
+                        return false;
+                    }
+                    else if (index + 1 < array.length && '0123456789.-+X'.indexOf(array[index + 1]) < 0){
+                        console.log('Error bad format ' + element);
+                        return false;
+                    }
+                }
+            }else if (element === '^'){
+                if (index > 0){
+                    if ('X'.indexOf(array[index - 1]) < 0){
+                        console.log('Error bad format ' + element);
+                        return false;
+                    }
+                    if (index + 1 >= array.length){
+                        console.log('Error bad format ' + element);
+                        return false;
+                    }
+                    let i = index + 1;
+                    while (i < array.length && '+-='.indexOf(array[i]) < 0){
+                        if ('0123456789'.indexOf(array[i]) < 0){
+                            console.log('Error bad format ' + element);
+                            return false;
+                        }
+                        i++;
+                    }
+                }else{
+                    console.log('Error bad format ' + element);
+                    return false;
+                }
+            }else if (element === 'X'){
+                if (index > 0){
+                    if ('0123456789.+-*='.indexOf(array[index - 1]) < 0){
+                        console.log('Error bad format ' + element);
+                        return false;
+                    }
+                    if (index + 1 >= array.length){
+                        console.log('Error bad format ' + element);
+                        return false;
+                    }
+                    if (index + 1 < array.length && '^'.indexOf(array[index + 1]) < 0){
+                        console.log('Error bad format ' + element);
+                        return false;
+                    }
+                }
+            }else if (element === '-' || element === '+'){
+                if (index > 0){
+                    if ('0123456789.*X='.indexOf(array[index - 1]) < 0){
+                        console.log('Error bad format ' + element);
+                        return false;
+                    }
+                    if (index + 1 >= array.length){
+                        console.log('Error bad format ' + element);
+                        return false;
+                    }
+                    if (index + 1 < array.length && '0123456789.X'.indexOf(array[index + 1]) < 0){
+                        console.log('Error bad format ' + element);
+                        return false;
+                    }
+                }
+            }
+            else if (element === '*'){
+                if (index > 0){
+                    if ('0123456789.X'.indexOf(array[index - 1]) < 0){
+                        console.log('Error bad format ' + element);
+                        return false;
+                    }
+                    if (index + 1 >= array.length){
+                        console.log('Error bad format ' + element);
+                        return false;
+                    }
+                    if (index + 1 < array.length && 'X'.indexOf(array[index + 1]) < 0){
+                        console.log('Error bad format ' + element);
+                        return false;
+                    }
+                }else{
+                    console.log('Error bad format ' + element);
+                    return false;
+                }
+            }
+            else if (element === '.'){
+                if ('0123456789'.indexOf(array[index - 1]) < 0){
+                    console.log('Error bad format ' + element);
+                    return false;
+                }
+                if (index + 1 < array.length && '0123456789'.indexOf(array[index + 1]) < 0){
+                    console.log('Error bad format ' + element);
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     process_polynomes(){
@@ -32,64 +164,56 @@ class Equation{
             if (index2 === -1){
                 result.push(element);
             }else{
-                console.log('Before ', this.lhs.coeff);
                 const monome = {key: element.key, value : this.rhs.coeff[index].value - this.lhs.coeff[index2].value}
                 result.push(monome);
                 this.lhs.coeff.splice(index2, 1);
-                console.log('After ', this.lhs.coeff);
             }
         }
         for (let index = 0; index < this.lhs.coeff.length; index++){
             result.push(this.lhs.coeff[index])
         }
-        console.log(result);
+        result = result.filter(monome => monome.value !== 0);
+        result.sort((a, b) => a.key - b.key);
         return result;
     }
 
-    check_equation_degree(){
-        let checker = [];
-        let mismatch = false;
-        for (let index = 0; index < this.rhs.extracoeff.length; index++) {
-            const element = this.rhs.extracoeff[index];
-            if (this.lhs.extracoeff.includes(element)){
-                if ((this.rhs.extracoeff[element.key].value - this.lhs.extracoeff[element.key].value) !== 0){
-                    console.log(this.rhs.extracoeff);
-                    checker.push(element.key);
-                }
-            }else{
-                mismatch = true;
-                break;
+    reduced_equation(){
+        let array = this.equ;
+        let red_str = ``;
+        let degree = this.degree;
+        for (let index = 0; index < array.length; index++) {
+            const element = array[index];
+            const value = element.value;
+            if (value < 0){
+                red_str += ` - ${-parseFloat(value.toFixed(6))} * X^${element.key}`;
+            }
+            else if (value > 0){
+                red_str += index > 0 ? ' + ' : '';
+                red_str += `${parseFloat(value.toFixed(6))} * X^${element.key}`;
             }
         }
-        if (mismatch || checker.length > 0){
-            let exponent;
+        if (red_str != ''){
+            red_str += ` = 0`
+        }
+        console.log(`Reduced form: ${red_str}`);
+        console.log(`Polynomial degree: ${degree}`);
+    }
 
-            if (mismatch){
-                this.rhs.extracoeff.sort((a, b) => a.key - b.key);
-                this.lhs.extracoeff.sort((a, b) => a.key - b.key);
-                if (!this.lhs.extracoeff[0]){
-                    exponent = this.rhs.extracoeff[0].key;
-                }else if (!this.rhs.extracoeff[0]){
-                    exponent = this.lhs.extracoeff[0].key;
-                }else{
-                    exponent = Math.max(this.rhs.extracoeff[0].key, this.lhs.extracoeff[0].key);
-                }
-            }else{
-                checker.sort((a, b) => a - b);
-                exponent = checker[0];
-            }
-            let errorMsg  = `Polynomial degree: ${exponent}\n`;
-            if (exponent > '2'){
-                errorMsg += `The polynomial degree is strictly greater than 2, I can't solve.`;
-            }else{
-                errorMsg += `The polynomial degree is strictly less than 0, I can't solve.`;
-            }
-            console.log(errorMsg);
+    check_equation_degree(){
+        if (this.degree > 2){
+            console.log(`The polynomial degree is strictly greater than 2, I can't solve.`);
             return false;
         }
+        let toFind;
+        toFind = this.equ.find(elem => elem.key === 2)
+        this.a = toFind ? toFind.value : 0;
+        toFind = this.equ.find(elem => elem.key === 1)
+        this.b = toFind ? toFind.value : 0;
+        toFind = this.equ.find(elem => elem.key === 0)
+        this.c = toFind ? toFind.value : 0;
         return true;
     }
-    
+
     solve_equation(){
         if (this.a === 0){
             if (this.b === 0){
@@ -105,15 +229,49 @@ class Equation{
                 this.print_one_solution(s);
             }
         }else{
+            const Sqrt = number => {
+                let end = 1;
+
+                if (number < 0) {
+                  return NaN;
+                }
+              
+                if (number == 0 || number == 1) {
+                  return number;
+                }
+                while (end * end < number) {
+                  end++;
+                }
+                let i = 0;
+                let start = end - 1;
+                let mid = (start + end) / 2;
+              
+                while (mid * mid != number) {
+                  if (mid * mid > number) {
+                    end = mid;
+                  } else {
+                    start = mid;
+                  }
+                  if (mid == (start + end) / 2) {
+                    break;
+                  }
+                  mid = (start + end) / 2;
+                  i++;
+                }
+                return mid;
+            };
             let delta = this.b * this.b - 4 * this.a * this.c;
             if (delta < 0){
-                this.print_no_solution();
+                delta = -delta;
+                delta = Sqrt(delta);
+                let real = (-this.b) / ( 2 * this.a);
+                this.print_complex_solutions(real, delta / (2 * this.a));
             }else if (delta === 0){
                 let s = -this.b / (2 * this.a);
                 this.print_one_solution(s);
             }else{
                 let s1, s2;
-                delta = Math.sqrt(delta);
+                delta = Sqrt(delta);
                 s1 = (-this.b - delta) / ( 2 * this.a);
                 s2 = (-this.b + delta) / (2 * this.a);
                 this.print_two_solutions(s1, s2);
@@ -127,37 +285,29 @@ class Equation{
 
     print_one_solution(s){
         console.log(`The solution is:`);
-        console.log(s);
+        console.log(parseFloat(s.toFixed(6)));
     }
 
     print_two_solutions(s1, s2){
         console.log(`Discriminant is strictly positive, the two solutions are:`);
-        console.log(s1);
-        console.log(s2);
+        console.log(parseFloat(s1.toFixed(6)));
+        console.log(parseFloat(s2.toFixed(6)));
+    }
+
+    print_complex_solutions(real, delta){
+        console.log(`Discriminant is strictly negative, the two solutions are:`);
+        if (delta > 0)
+        {
+            console.log(`${parseFloat(real.toFixed(6))} - ${parseFloat(delta.toFixed(6))}i`);
+            console.log(`${parseFloat(real.toFixed(6))} + ${parseFloat(delta.toFixed(6))}i`);
+        }else{
+            console.log(`${parseFloat(real.toFixed(6))} + ${parseFloat(-delta.toFixed(6))}i`);
+            console.log(`${parseFloat(real.toFixed(6))} - ${parseFloat(-delta.toFixed(6))}i`);
+        }
     }
 
     print_any_solution(){
         console.log(`Any number as solution`);
-    }
-
-    print_equation(){
-        let v_eq = '';
-        let degree = 0;
-
-        if (this.c !== 0){
-            v_eq += `${this.c}`;
-        }
-        if (this.b !== 0){
-            degree = 1;
-            v_eq += (v_eq ? (this.b > 0 ? ' + ' : ' - ' ): v_eq ) + `${Math.abs(this.b)} * X `; 
-        }
-        if (this.a !== 0){
-            v_eq += (v_eq ? (this.a > 0 ? ' + ' : ' - ' ): v_eq ) + `${Math.abs(this.a)} * X ^ 2`;
-            degree = 2;
-        }
-        v_eq = v_eq !== '' ? v_eq + ' = 0':'';
-        console.log(`Reduced form: ${v_eq}`);
-        console.log(`Polynomial degree: ${degree}`);
     }
 
     add_plus(equation_str){
@@ -210,7 +360,6 @@ class Polynomial{
                 }
             }
         });
-        console.log(this.coeff);
         return true;
     }
 }
